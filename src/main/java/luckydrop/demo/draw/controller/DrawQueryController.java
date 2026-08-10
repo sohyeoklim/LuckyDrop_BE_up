@@ -15,6 +15,8 @@ import luckydrop.demo.draw.enums.DrawSort;
 import luckydrop.demo.draw.enums.DrawTab;
 import luckydrop.demo.draw.service.DrawQueryService;
 import luckydrop.demo.draw.service.DrawingService;
+import luckydrop.demo.draw.dto.request.FulfillmentUpdateRequest;
+import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -153,6 +155,23 @@ public class DrawQueryController {
         List<HostWinnerInfoResponse> response = drawQueryService.getHostWinnerInfo(drawId, principal.getUser().getId());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/host/draws/{drawId}/winners/{winnerId}/fulfillment")
+    public ResponseEntity<Void> updateFulfillment(@PathVariable Long drawId, @PathVariable Long winnerId,
+            @AuthenticationPrincipal CustomUserPrincipal principal, @Valid @RequestBody FulfillmentUpdateRequest request) {
+        drawQueryService.updateFulfillment(drawId, winnerId, principal.getUser().getId(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/host/draws")
+    public ResponseEntity<Page<HostDrawResponse>> getHostDraws(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        if (page < 0 || size < 1) throw new IllegalArgumentException("page must be >= 0 and size must be >= 1");
+        return ResponseEntity.ok(drawQueryService.getHostDraws(principal.getUser().getId(),
+                org.springframework.data.domain.PageRequest.of(page, Math.min(size, 100))));
     }
 
     @GetMapping("/draws/stats")

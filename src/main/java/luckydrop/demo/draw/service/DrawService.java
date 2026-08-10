@@ -95,7 +95,7 @@ public class DrawService {
         User hostUser = userRepository.findById(draw.getUserId())
                 .orElseThrow();
 
-        return DrawDetailResponse.from(draw, hostUser.getNickname(), isBookmarked, bookmarkCount, totalEntries, 0, false, 0L);
+        return DrawDetailResponse.from(draw, hostUser.getNickname(), isBookmarked, bookmarkCount, totalEntries, 0L, 0, false, 0L);
     }
 
 
@@ -112,7 +112,6 @@ public class DrawService {
                 .brand(p.getBrand())
                 .description(p.getDescription())
                 .retailPrice(p.getRetailPrice())
-                .shippable(p.getShippable())
                 .build();
 
         inventoryRepository.save(inventory);

@@ -28,6 +28,7 @@ public class DrawDetailResponse {
     @JsonProperty("isBookmarked")
     private boolean isBookmarked;
     private long participantCount;
+    private long totalEntryCount;
     private long bookmarkCount;
 
     private String productName;
@@ -49,6 +50,7 @@ public class DrawDetailResponse {
             boolean isBookmarked,
             long bookmarkCount,
             long participantCount,
+            long totalEntryCount,
             Integer myTicketBalance,
             boolean isEntered,
             Long entryCount
@@ -69,6 +71,7 @@ public class DrawDetailResponse {
                 .isEntered(isEntered)
                 .entryCount(entryCount)
                 .participantCount(participantCount)
+                .totalEntryCount(totalEntryCount)
                 .myTicketBalance(myTicketBalance)
                 .productName(draw.getInventory().getName())
                 .brand(draw.getInventory().getBrand())

@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import luckydrop.demo.user.entity.User;
+import luckydrop.demo.draw.enums.FulfillmentStatus;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "draw_winner",
@@ -46,9 +49,25 @@ public class DrawWinner {
     )
     private User user;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_status", nullable = false, length = 20)
+    private FulfillmentStatus fulfillmentStatus = FulfillmentStatus.PENDING;
+
+    @Column(name = "fulfillment_note", length = 500)
+    private String fulfillmentNote;
+
+    @Column(name = "fulfilled_at")
+    private LocalDateTime fulfilledAt;
+
     @Builder
     public DrawWinner(Long drawId, Long userId) {
         this.drawId = drawId;
         this.userId = userId;
+    }
+
+    public void updateFulfillment(FulfillmentStatus status, String note) {
+        this.fulfillmentStatus = status;
+        this.fulfillmentNote = note;
+        this.fulfilledAt = status == FulfillmentStatus.COMPLETED ? LocalDateTime.now() : null;
     }
 }

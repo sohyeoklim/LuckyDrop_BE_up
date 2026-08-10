@@ -5,8 +5,11 @@ import luckydrop.demo.draw.bookmark.repository.DrawBookmarkRepository;
 import luckydrop.demo.draw.bookmark.service.DrawBookmarkService;
 import luckydrop.demo.draw.dto.response.*;
 import luckydrop.demo.draw.entity.Draw;
+import luckydrop.demo.draw.entity.DrawWinner;
 import luckydrop.demo.draw.entity.DrawEntrySummary;
 import luckydrop.demo.draw.enums.DrawSort;
+import luckydrop.demo.draw.dto.request.FulfillmentUpdateRequest;
+import luckydrop.demo.notification.NotificationService;
 import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.enums.DrawTab;
 import luckydrop.demo.draw.inventory.entity.InventoryImage;
@@ -38,6 +41,7 @@ public class DrawQueryService {
     private final DrawRepository drawRepository;
     private final UserRepository userRepository;
     private final DrawWinnerRepository drawWinnerRepository;
+    private final NotificationService notificationService;
 
     private final DrawBookmarkRepository drawBookmarkRepository;
     private final InventoryImageRepository inventoryImageRepository;
@@ -123,6 +127,7 @@ public class DrawQueryService {
 
         long bookmarkCount = drawBookmarkService.getBookmarkCount(drawId);
         long participantCount = drawEntrySummaryRepository.countParticipants(drawId);
+        long totalEntryCount = drawEntrySummaryRepository.sumEntryCountByDrawId(drawId);
 
         Long entryCount = 0L;
         boolean isEntered = false;
@@ -146,6 +151,7 @@ public class DrawQueryService {
                 isBookmarked,
                 bookmarkCount,
                 participantCount,
+                totalEntryCount,
                 myTicketBalance,
                 isEntered,
                 entryCount);
@@ -251,6 +257,24 @@ public class DrawQueryService {
         }
 
         return drawWinnerRepository.findHostWinnerInfoByDrawId(drawId);
+    }
+
+    @Transactional
+    public void updateFulfillment(Long drawId, Long winnerId, Long requesterUserId, FulfillmentUpdateRequest request) {
+        Draw draw = drawRepository.findById(drawId).orElseThrow(() -> new IllegalArgumentException("draw not found"));
+        if (!draw.getUserId().equals(requesterUserId)) throw new AccessDeniedException("host only");
+        DrawWinner winner = drawWinnerRepository.findById(winnerId)
+                .filter(item -> item.getDrawId().equals(drawId))
+                .orElseThrow(() -> new IllegalArgumentException("winner not found"));
+        winner.updateFulfillment(request.status(), request.note());
+        notificationService.notifyFulfillmentUpdated(draw, winner);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<HostDrawResponse> getHostDraws(Long userId, Pageable pageable) {
+        return drawRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(draw -> new HostDrawResponse(draw.getId(), draw.getTitle(), draw.getStatus(), draw.getEndAt()))
+                ;
     }
 
     private DrawSort resolveDefaultSort(DrawTab tab, DrawSort sortOrNull) {

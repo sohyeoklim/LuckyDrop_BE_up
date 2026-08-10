@@ -18,6 +18,8 @@ public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
     //유저별 당첨 조회
     List<DrawWinner> findByUserId(Long userId);
 
+    List<DrawWinner> findByDrawId(Long drawId);
+
     // 특정 드로우 당첨자 응모한 티켓수, 닉네임 가져오기
     @Query("""
         select new luckydrop.demo.draw.dto.response.DrawWinnerResponse$WinnerItem(
@@ -33,11 +35,14 @@ public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
 
     @Query("""
         select new luckydrop.demo.draw.dto.response.HostWinnerInfoResponse(
+        dw.id,
         u.id,
         u.name,
         u.nickname,
         u.phone,
-        u.address
+        u.address,
+        dw.fulfillmentStatus,
+        dw.fulfillmentNote
         )
         from DrawWinner dw
         join dw.user u

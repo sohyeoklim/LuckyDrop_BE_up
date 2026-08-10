@@ -17,6 +17,10 @@ import java.time.LocalDateTime;
         name = "draw",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_draw_inventory", columnNames = "inventory_id")
+        },
+        indexes = {
+                @Index(name = "idx_draw_status_start_at", columnList = "status, start_at"),
+                @Index(name = "idx_draw_status_end_at", columnList = "status, end_at")
         }
 )
 @Getter

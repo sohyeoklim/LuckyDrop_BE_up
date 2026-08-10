@@ -10,6 +10,7 @@ import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.repository.DrawRepository;
 import luckydrop.demo.draw.repository.DrawWinnerRepository;
 import luckydrop.demo.entry.repository.DrawEntrySummaryRepository;
+import luckydrop.demo.notification.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class DrawingService {
     private final DrawRepository drawRepository;
     private final DrawWinnerRepository drawWinnerRepository;
     private final DrawEntrySummaryRepository drawEntrySummaryRepository;
+    private final NotificationService notificationService;
 
 
     // 특정 드로우 전체 당첨자 조회
@@ -94,6 +96,7 @@ public class DrawingService {
         }
         drawWinnerRepository.saveAll(winners);
 
+        notificationService.notifyDrawFinished(drawId);
         return winners;
     }
 

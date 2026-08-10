@@ -51,6 +51,13 @@ public interface DrawEntrySummaryRepository extends JpaRepository<DrawEntrySumma
     long countParticipants(@Param("drawId") Long drawId);
 
     @Query("""
+            select coalesce(sum(s.entryCount), 0)
+            from DrawEntrySummary s
+            where s.drawId = :drawId
+            """)
+    long sumEntryCountByDrawId(@Param("drawId") Long drawId);
+
+    @Query("""
                     select d.userId as userId, d.entryCount as entryCount
                     from DrawEntrySummary d
                     where d.drawId = :drawId and d.entryCount > 0
