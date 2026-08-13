@@ -21,6 +21,8 @@ public interface DrawRepository extends JpaRepository<Draw, Long> {
     boolean existsByInventoryId(Long inventoryId); // inventory_id UNIQUE 체크용
 
     Page<Draw> findAllByStatusNot(DrawStatus status, Pageable pageable);
+    List<Draw> findByUserIdOrderByCreatedAtDesc(Long userId);
+    Page<Draw> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     Optional<Draw> findByIdAndStatusNot(Long id, DrawStatus status);
 
@@ -66,6 +68,13 @@ public interface DrawRepository extends JpaRepository<Draw, Long> {
     """)
     int updateDraftToActive(@Param("now")LocalDateTime now);
 
+    @Query("""
+        select d.id from Draw d
+        where d.status = 'DRAFT'
+          and d.startAt <= :now
+    """)
+    List<Long> findDraftIdsReadyToActivate(@Param("now") LocalDateTime now);
+
     @Modifying
     @Query("""
         update Draw d
@@ -74,6 +83,13 @@ public interface DrawRepository extends JpaRepository<Draw, Long> {
             and d.endAt <= :now
     """)
     int updateActiveToDrawing(@Param("now") LocalDateTime now);
+
+    @Query("""
+        select d.id from Draw d
+        where d.status = 'ACTIVE'
+          and d.endAt <= :now
+    """)
+    List<Long> findActiveIdsReadyForDrawing(@Param("now") LocalDateTime now);
 
     @Modifying
     @Query("""

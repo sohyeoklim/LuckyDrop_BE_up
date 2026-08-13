@@ -33,7 +33,7 @@ public class DrawEntryService {
         log.info("enterDraw: user={}, draw={}, count={}, idempotencyKey={}",
                 userId, drawId, count, idempotencyKey);
 
-        Draw draw = drawRepository.findById(drawId)
+        Draw draw = drawRepository.findByIdForUpdate(drawId)
                 .orElseThrow(() -> new IllegalArgumentException("draw not found: " + drawId));
 
         validateEnterable(draw, userId, LocalDateTime.now());

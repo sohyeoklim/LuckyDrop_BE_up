@@ -17,6 +17,8 @@ import luckydrop.demo.user.entity.User;
 import luckydrop.demo.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -62,6 +64,20 @@ public class TicketService {
                         .build()
                 )
                 .toList();
+    }
+
+    public Page<LedgerItemResDto> getLedger(Long userId, Pageable pageable) {
+        return ticketLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(l -> LedgerItemResDto.builder()
+                        .id(l.getId())
+                        .type(l.getType())
+                        .amount(l.getAmount())
+                        .reason(l.getReason())
+                        .refType(l.getRefType())
+                        .refId(l.getRefId())
+                        .idempotencyKey(l.getIdempotencyKey())
+                        .createdAt(l.getCreatedAt())
+                        .build());
     }
 
     @Transactional

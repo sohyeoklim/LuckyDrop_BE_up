@@ -6,6 +6,7 @@ import luckydrop.demo.draw.entity.Draw;
 import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.repository.DrawRepository;
 import luckydrop.demo.draw.service.DrawingService;
+import luckydrop.demo.draw.sse.DrawSseService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -20,8 +21,9 @@ public class DrawScheduler {
 
     private final DrawRepository drawRepository;
     private final DrawingService drawingService;
+    private final DrawSseService drawSseService;
 
-    @Scheduled(fixedDelay =  60_000)
+    @Scheduled(fixedDelay = 10_000)
     public void runAutoDraw() {
 
         LocalDateTime now = LocalDateTime.now();
@@ -35,6 +37,7 @@ public class DrawScheduler {
         for (Draw d : drawingDraws) {
             try {
                 drawingService.drawingWinner(d.getId()); //내부에서 DRAWING->CLOSED 선점 + winners 저장/빈리스트
+                drawSseService.publishStatusChanged(d.getId(), DrawStatus.CLOSE);
                 succeeded++;
             } catch (Exception e) {
                 failed++;
