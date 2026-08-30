@@ -56,6 +56,9 @@ public class DrawCreateRequest {
         @Min(value = 0, message = "상품 가격은 0 이상이어야 합니다.")
         private final Integer retailPrice;
 
+        @NotNull(message = "배송 가능 여부를 입력해주세요.")
+        private final Boolean shippable;
+
         @NotNull(message = "이미지를 1장 이상 등록해주세요.")
         @Size(min = 1, message = "이미지를 1장 이상 등록해주세요.")
         @Valid

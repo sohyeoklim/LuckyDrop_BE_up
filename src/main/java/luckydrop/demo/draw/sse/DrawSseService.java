@@ -2,13 +2,13 @@ package luckydrop.demo.draw.sse;
 
 import lombok.extern.slf4j.Slf4j;
 import luckydrop.demo.draw.enums.DrawStatus;
+import luckydrop.demo.realtime.event.DrawStatusChangedEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -38,26 +38,12 @@ public class DrawSseService {
         return emitter;
     }
 
-    public void publishStatusChanged(Long drawId, DrawStatus status) {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    sendStatusChanged(drawId, status);
-                }
-            });
-            return;
-        }
-
-        sendStatusChanged(drawId, status);
-    }
-
-    private void sendStatusChanged(Long drawId, DrawStatus status) {
-        DrawStatusEvent event = new DrawStatusEvent(drawId, status, LocalDateTime.now());
+    //Redis 에서 이벤트를 받은 뒤, 현재 서버에 연결된 사용자에게만 전송
+    public void sendToLocalEmitters(DrawStatusChangedEvent event) {
         emitters.forEach(emitter -> send(emitter, event));
     }
 
-    private void send(SseEmitter emitter, DrawStatusEvent event) {
+    private void send(SseEmitter emitter, DrawStatusChangedEvent event) {
         try {
             emitter.send(SseEmitter.event()
                     .name("draw-status-changed")
@@ -67,4 +53,6 @@ public class DrawSseService {
             emitter.complete();
         }
     }
+
+
 }

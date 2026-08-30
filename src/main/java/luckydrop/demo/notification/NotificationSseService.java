@@ -1,5 +1,6 @@
 package luckydrop.demo.notification;
 
+import luckydrop.demo.realtime.event.NotificationCreatedEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -66,6 +67,25 @@ public class NotificationSseService {
         emittersByUser.computeIfPresent(userId, (ignored, emitters) -> {
             emitters.remove(emitter);
             return emitters.isEmpty() ? null : emitters;
+        });
+    }
+
+    public void sendToLocalUserEmitters(NotificationCreatedEvent event) {
+        Set<SseEmitter> emitters = emittersByUser.get(event.userId());
+
+        if (emitters == null) {
+            return;
+        }
+
+        emitters.forEach(emitter -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("notification")
+                        .data(event));
+            } catch (IOException | IllegalStateException exception) {
+                remove(event.userId(), emitter);
+                emitter.complete();
+            }
         });
     }
 }

@@ -6,7 +6,10 @@ import luckydrop.demo.draw.entity.Draw;
 import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.repository.DrawRepository;
 import luckydrop.demo.draw.service.DrawingService;
-import luckydrop.demo.draw.sse.DrawSseService;
+import luckydrop.demo.realtime.RedisChannels;
+import luckydrop.demo.realtime.RedisEventPublisher;
+import luckydrop.demo.realtime.event.DrawStatusChangedEvent;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,9 +24,14 @@ public class DrawScheduler {
 
     private final DrawRepository drawRepository;
     private final DrawingService drawingService;
-    private final DrawSseService drawSseService;
+    private final RedisEventPublisher redisEventPublisher;
 
     @Scheduled(fixedDelay = 10_000)
+    @SchedulerLock(
+            name = "autoDrawScheduler",
+            lockAtMostFor = "PT30S",
+            lockAtLeastFor = "PT10S"
+    )
     public void runAutoDraw() {
 
         LocalDateTime now = LocalDateTime.now();
@@ -37,7 +45,7 @@ public class DrawScheduler {
         for (Draw d : drawingDraws) {
             try {
                 drawingService.drawingWinner(d.getId()); //내부에서 DRAWING->CLOSED 선점 + winners 저장/빈리스트
-                drawSseService.publishStatusChanged(d.getId(), DrawStatus.CLOSE);
+                publishStatusChanged(d.getId(), DrawStatus.CLOSE);
                 succeeded++;
             } catch (Exception e) {
                 failed++;
@@ -48,5 +56,15 @@ public class DrawScheduler {
         if (succeeded > 0 || failed > 0) {
             log.info("[AutoDraw] succeeded={}, failed={}", succeeded, failed);
         }
+    }
+
+    private void publishStatusChanged(Long drawId, DrawStatus status) {
+        DrawStatusChangedEvent event = new DrawStatusChangedEvent(
+                drawId,
+                status,
+                LocalDateTime.now()
+        );
+
+        redisEventPublisher.publish(RedisChannels.DRAW_STATUS, event);
     }
 }

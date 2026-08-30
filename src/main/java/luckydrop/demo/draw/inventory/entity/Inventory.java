@@ -32,6 +32,9 @@ public class Inventory {
     @Column(name = "retail_price")
     private Integer retailPrice;
 
+    @Column(nullable = false)
+    private boolean shippable;
+
     @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     private List<InventoryImage> images = new ArrayList<>();
@@ -42,10 +45,12 @@ public class Inventory {
     public Inventory(String name,
                      String brand,
                      String description,
-                     Integer retailPrice) {
+                     Integer retailPrice,
+                     boolean shippable) {
         this.name = name;
         this.brand = brand;
         this.description = description;
         this.retailPrice = retailPrice;
+        this.shippable = shippable;
     }
 }
