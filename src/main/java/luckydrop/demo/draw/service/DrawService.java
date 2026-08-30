@@ -112,6 +112,7 @@ public class DrawService {
                 .brand(p.getBrand())
                 .description(p.getDescription())
                 .retailPrice(p.getRetailPrice())
+                .shippable(p.getShippable())
                 .build();
 
         inventoryRepository.save(inventory);
