@@ -5,8 +5,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://luckydrop-db.cdiqy4q6sf1p.ap-northeast-2.rds.amazonaws.com:3306/lucky_drop
-    username: admin
-    password: hcUDngSW2gddFkf
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   data:
     redis:

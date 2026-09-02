@@ -8,6 +8,9 @@ public enum DrawTab {
     @Schema(description = "전체 목록")
     ALL,
 
+    @Schema(description = "대기중 및 진행중")
+    OPEN,
+
     @Schema(description = "대기중 (DRAFT && startAt > now)")
     UPCOMING,
 

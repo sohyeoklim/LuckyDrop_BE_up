@@ -35,15 +35,22 @@ public class Securityconfigs {
                 .csrf(AbstractHttpConfigurer::disable) // csrf 비활성화 (코드나 서비스로 방어할 수 있는 부분이 많아 비활성화 함)
                 .httpBasic(AbstractHttpConfigurer::disable) // Http basic 비활성화 (토큰 기반 인증처리를 하기 때문에 자동적으로 켜지는 basic 비활성화)
                 // 특정 url 패턴에 대해서는 Authentication 객체 요구하지 않음. (인증처리 제외)
-                .authorizeHttpRequests(a -> a.requestMatchers("/api/user/create", "/api/user/login", "/api/user/logout",
-                        "/api/user/token/reissue" ,"/api/ticket/ledger/**", "/api/ticket/wallet/**",
-                        "/api/ticket/use", "/api/ticket/earn", "/api/ticket/adjust",
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers(HttpMethod.POST, "/api/ticket/adjust").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/draws/*/draw").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/draws/create").hasAnyRole("HOST", "ADMIN")
+                        .requestMatchers("/api/ticket/**").authenticated()
+
+                        .requestMatchers("/api/user/create", "/api/user/login", "/api/user/logout",
+                        "/api/user/token/reissue",
                         "/api/signup/email", "/api/signup/emailAuth",
                         "/uploads/**",
                         "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
-                        "/api/draws", "/api/draws/hot-banner", "/api/draws/stats", "/api/draws/events", "/api/draws/create",
+                        "/api/draws", "/api/draws/hot-banner", "/api/draws/stats", "/api/draws/events",
                         "/api/user/forgot-password", "/api/user/verify-reset-code", "/api/user/reset-password", "/api/user/change-password",
-                        "/api/user/check-nickname", "/api/user/check-email").permitAll()
+                        "/api/user/check-nickname", "/api/user/check-email")
+                        .permitAll()
+
                         .anyRequest().authenticated())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) //세션방식을 사용하지 않겠다 라는 의미
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

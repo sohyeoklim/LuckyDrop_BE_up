@@ -5,6 +5,7 @@ import luckydrop.demo.draw.enums.FulfillmentStatus;
 
 public record FulfillmentUpdateRequest(
         @NotNull FulfillmentStatus status,
-        String note
+        String note,
+        String trackingNumber
 ) {
 }

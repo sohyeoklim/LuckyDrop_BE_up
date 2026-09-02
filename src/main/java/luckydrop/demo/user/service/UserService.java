@@ -81,11 +81,6 @@ public class UserService {
                         .build()
         );
 
-        // ⭐ 추천 코드가 있으면 추천인 보상 처리
-        if (userSaveReqDto.getReferredByCode() != null && !userSaveReqDto.getReferredByCode().isBlank()) {
-            validateAndRewardReferral(savedUser.getId(), userSaveReqDto.getReferredByCode());
-        }
-
         return savedUser;
     }
 

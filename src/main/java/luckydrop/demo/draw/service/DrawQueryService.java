@@ -266,14 +266,33 @@ public class DrawQueryService {
         DrawWinner winner = drawWinnerRepository.findById(winnerId)
                 .filter(item -> item.getDrawId().equals(drawId))
                 .orElseThrow(() -> new IllegalArgumentException("winner not found"));
-        winner.updateFulfillment(request.status(), request.note());
+        if (winner.getFulfillmentStatus() != luckydrop.demo.draw.enums.FulfillmentStatus.ADDRESS_SUBMITTED
+                && winner.getFulfillmentStatus() != luckydrop.demo.draw.enums.FulfillmentStatus.PROCESSING) {
+            throw new IllegalStateException("당첨자가 배송 정보를 제출한 뒤에만 처리할 수 있습니다.");
+        }
+        winner.updateFulfillment(request.status(), request.note(), request.trackingNumber());
         notificationService.notifyFulfillmentUpdated(draw, winner);
+    }
+
+    @Transactional
+    public void submitDeliveryAddress(Long drawId, Long winnerId, Long requesterUserId,
+                                      luckydrop.demo.draw.dto.request.DeliveryAddressRequest request) {
+        DrawWinner winner = drawWinnerRepository.findById(winnerId)
+                .filter(item -> item.getDrawId().equals(drawId) && item.getUserId().equals(requesterUserId))
+                .orElseThrow(() -> new AccessDeniedException("당첨자만 배송 정보를 입력할 수 있습니다."));
+        winner.submitDeliveryAddress(request.phone(), request.address());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<luckydrop.demo.draw.dto.response.MyDeliveryResponse> getMyDelivery(Long drawId, Long requesterUserId) {
+        return drawWinnerRepository.findByDrawIdAndUserId(drawId, requesterUserId)
+                .map(luckydrop.demo.draw.dto.response.MyDeliveryResponse::from);
     }
 
     @Transactional(readOnly = true)
     public Page<HostDrawResponse> getHostDraws(Long userId, Pageable pageable) {
         return drawRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(draw -> new HostDrawResponse(draw.getId(), draw.getTitle(), draw.getStatus(), draw.getEndAt()))
+                .map(draw -> new HostDrawResponse(draw.getId(), draw.getTitle(), draw.getStatus(), draw.getEndAt(), drawWinnerRepository.countByDrawIdAndFulfillmentStatus(draw.getId(), luckydrop.demo.draw.enums.FulfillmentStatus.ADDRESS_SUBMITTED) > 0))
                 ;
     }
 
@@ -284,6 +303,7 @@ public class DrawQueryService {
 
         return switch (tab) {
             case ALL -> DrawSort.LATEST;
+            case OPEN -> DrawSort.LATEST;
             case UPCOMING -> DrawSort.LATEST;
             case ONGOING -> DrawSort.ENDING_SOON;
             case CLOSED -> DrawSort.ENDED_DESC;

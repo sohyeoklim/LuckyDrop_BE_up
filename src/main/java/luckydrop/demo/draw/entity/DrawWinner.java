@@ -59,15 +59,61 @@ public class DrawWinner {
     @Column(name = "fulfilled_at")
     private LocalDateTime fulfilledAt;
 
+    @Column(name = "delivery_phone", length = 30)
+    private String deliveryPhone;
+
+    @Column(name = "delivery_address", length = 500)
+    private String deliveryAddress;
+
+    @Column(name = "address_deadline_at")
+    private LocalDateTime addressDeadlineAt;
+
+    @Column(name = "address_submitted_at")
+    private LocalDateTime addressSubmittedAt;
+
+    @Column(name = "tracking_number", length = 100)
+    private String trackingNumber;
+
     @Builder
     public DrawWinner(Long drawId, Long userId) {
         this.drawId = drawId;
         this.userId = userId;
     }
 
-    public void updateFulfillment(FulfillmentStatus status, String note) {
+    public void updateFulfillment(FulfillmentStatus status, String note, String trackingNumber) {
         this.fulfillmentStatus = status;
         this.fulfillmentNote = note;
+        this.trackingNumber = trackingNumber;
         this.fulfilledAt = status == FulfillmentStatus.COMPLETED ? LocalDateTime.now() : null;
+    }
+
+    public void initializeDelivery(User user, boolean shippable, LocalDateTime now) {
+        if (!shippable) return;
+        this.deliveryPhone = user.getPhone();
+        this.deliveryAddress = user.getAddress();
+        this.addressDeadlineAt = now.plusDays(3);
+        if (deliveryPhone == null || deliveryPhone.isBlank() || deliveryAddress == null || deliveryAddress.isBlank()) {
+            this.fulfillmentStatus = FulfillmentStatus.ADDRESS_REQUIRED;
+        } else {
+            this.fulfillmentStatus = FulfillmentStatus.ADDRESS_SUBMITTED;
+            this.addressSubmittedAt = now;
+        }
+    }
+
+    public void expireAddressSubmission() {
+        if (fulfillmentStatus == FulfillmentStatus.ADDRESS_REQUIRED) {
+            fulfillmentStatus = FulfillmentStatus.EXPIRED;
+        }
+    }
+
+    public void submitDeliveryAddress(String phone, String address) {
+        if (fulfillmentStatus != FulfillmentStatus.ADDRESS_REQUIRED || addressDeadlineAt == null
+                || !LocalDateTime.now().isBefore(addressDeadlineAt)) {
+            throw new IllegalStateException("배송 정보는 제출 기한 내에 한 번만 제출할 수 있습니다.");
+        }
+        this.deliveryPhone = phone;
+        this.deliveryAddress = address;
+        this.addressSubmittedAt = LocalDateTime.now();
+        this.fulfillmentStatus = FulfillmentStatus.ADDRESS_SUBMITTED;
     }
 }

@@ -38,6 +38,13 @@ public class MissionSeedConfig {
             seed("ATTENDANCE_BONUS_30", "30일 보너스", "연속 30일 보너스",
                     MissionType.ATTENDANCE, LimitUnit.DAY, 10);
 
+            seed("DRAW_FIRST", "첫 응모", "첫 드로우 응모 보상",
+                    MissionType.EVENT, LimitUnit.LIFETIME, 5);
+            seed("DRAW_DAILY", "일일 응모", "하루 첫 드로우 응모 보상",
+                    MissionType.EVENT, LimitUnit.DAY, 1);
+            seed("BOOKMARK_FIRST", "첫 관심 드로우", "첫 드로우 북마크 보상",
+                    MissionType.EVENT, LimitUnit.LIFETIME, 5);
+
         };
     }
 

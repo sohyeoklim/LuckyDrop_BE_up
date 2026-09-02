@@ -71,6 +71,24 @@ public class Draw extends BaseEntity {
     @Column(name = "end_at_changed", nullable = false)
     private boolean endAtChanged;
 
+    @Column(name = "server_seed", length = 128)
+    private String serverSeed;
+
+    @Column(name = "server_seed_hash", length = 64)
+    private String serverSeedHash;
+
+    @Column(name = "verification_algorithm", length = 64)
+    private String verificationAlgorithm;
+
+    @Column(name = "verification_committed_at")
+    private LocalDateTime verificationCommittedAt;
+
+    @Column(name = "participant_snapshot_hash", length = 64)
+    private String participantSnapshotHash;
+
+    @Column(name = "drawn_at")
+    private LocalDateTime drawnAt;
+
 
     //private LocalDateTime createdAt;
 
@@ -132,5 +150,27 @@ public class Draw extends BaseEntity {
 
     public void markEndAtChanged() {
         this.endAtChanged = true;
+    }
+
+    public void initializeVerification(String seed, String seedHash, String algorithm, LocalDateTime committedAt) {
+        this.serverSeed = seed;
+        this.serverSeedHash = seedHash;
+        this.verificationAlgorithm = algorithm;
+        this.verificationCommittedAt = committedAt;
+    }
+
+    public void initializeLegacyDrawingSeed(String seed, String seedHash, String algorithm) {
+        this.serverSeed = seed;
+        this.serverSeedHash = seedHash;
+        this.verificationAlgorithm = algorithm;
+    }
+
+    public void completeVerification(String snapshotHash, LocalDateTime completedAt) {
+        this.participantSnapshotHash = snapshotHash;
+        this.drawnAt = completedAt;
+    }
+
+    public boolean hasVerificationCommitment() {
+        return verificationCommittedAt != null && serverSeed != null && serverSeedHash != null;
     }
 }

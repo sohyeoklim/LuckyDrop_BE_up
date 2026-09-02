@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface TicketWalletRepository extends JpaRepository<TicketWallet, Integer> {
+public interface TicketWalletRepository extends JpaRepository<TicketWallet, Long> {
 
     Optional<TicketWallet> findByUserId(Long userId);
 

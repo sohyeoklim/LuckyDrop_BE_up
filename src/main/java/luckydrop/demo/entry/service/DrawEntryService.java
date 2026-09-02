@@ -15,6 +15,7 @@ import luckydrop.demo.entry.repository.DrawEntrySummaryRepository;
 import luckydrop.demo.draw.repository.DrawRepository;
 import luckydrop.demo.entry.dto.response.DrawEntryResponse;
 import luckydrop.demo.ticket.service.TicketService;
+import luckydrop.demo.mission.service.DrawMissionClaimService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,6 +28,7 @@ public class DrawEntryService {
     private final DrawRepository drawRepository;
     private final DrawEntrySummaryRepository entrySummaryRepository;
     private final TicketService ticketService;
+    private final DrawMissionClaimService drawMissionClaimService;
 
     @Transactional
     public DrawEntryResponse enter(Long drawId, Long userId, int count, String idempotencyKey) {
@@ -57,6 +59,7 @@ public class DrawEntryService {
 
         // 2. 응모 횟수 증가
         upsertEntrySummary(drawId, userId, count);
+        drawMissionClaimService.rewardEntryMissions(userId);
 
         long currentEntryCount = getCurrentEntryCount(drawId, userId);
         long spentTicketsTotal = Math.multiplyExact(currentEntryCount, (long) ticketPerEntry);

@@ -8,6 +8,7 @@ public record HostWinnerInfoResponse(
         String phone,
         String address,
         luckydrop.demo.draw.enums.FulfillmentStatus fulfillmentStatus,
-        String fulfillmentNote
+        String fulfillmentNote,
+        String trackingNumber
 ) {
 }
