@@ -164,6 +164,22 @@ public class DrawQueryController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/draws/{drawId}/winners/{winnerId}/delivery-address")
+    public ResponseEntity<Void> submitDeliveryAddress(@PathVariable Long drawId, @PathVariable Long winnerId,
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody luckydrop.demo.draw.dto.request.DeliveryAddressRequest request) {
+        drawQueryService.submitDeliveryAddress(drawId, winnerId, principal.getUser().getId(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/draws/{drawId}/my-delivery")
+    public ResponseEntity<luckydrop.demo.draw.dto.response.MyDeliveryResponse> getMyDelivery(
+            @PathVariable Long drawId, @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return drawQueryService.getMyDelivery(drawId, principal.getUser().getId())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
     @GetMapping("/host/draws")
     public ResponseEntity<Page<HostDrawResponse>> getHostDraws(
             @AuthenticationPrincipal CustomUserPrincipal principal,

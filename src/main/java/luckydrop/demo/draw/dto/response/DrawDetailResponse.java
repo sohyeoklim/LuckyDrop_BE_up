@@ -43,6 +43,7 @@ public class DrawDetailResponse {
     @JsonProperty("isEntered")
     private boolean isEntered;
     private Long entryCount;
+    private DrawVerificationResponse verification;
 
     public static DrawDetailResponse from(
             Draw draw,
@@ -70,6 +71,7 @@ public class DrawDetailResponse {
                 .bookmarkCount(bookmarkCount)
                 .isEntered(isEntered)
                 .entryCount(entryCount)
+                .verification(DrawVerificationResponse.from(draw))
                 .participantCount(participantCount)
                 .totalEntryCount(totalEntryCount)
                 .myTicketBalance(myTicketBalance)

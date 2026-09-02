@@ -17,6 +17,7 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
         select d.id
         from Draw d
         where (:tab = 'ALL' and d.status <> :cancel)
+           or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
@@ -38,6 +39,7 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
         select d.id
         from Draw d
         where (:tab = 'ALL' and d.status <> :cancel)
+           or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
@@ -59,6 +61,7 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
         select d.id
         from Draw d
         where (:tab = 'ALL' and d.status <> :cancel)
+           or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
@@ -80,6 +83,7 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
         select d.id
         from Draw d
         where (:tab = 'ALL' and d.status <> :cancel)
+           or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
@@ -101,6 +105,7 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
         select d.id
         from Draw d
         where (:tab = 'ALL' and d.status <> :cancel)
+           or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
@@ -124,6 +129,7 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
         select d.id
         from Draw d
         where (:tab = 'ALL' and d.status <> :cancel)
+           or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))

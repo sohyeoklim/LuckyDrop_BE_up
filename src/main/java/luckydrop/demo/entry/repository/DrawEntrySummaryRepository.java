@@ -61,6 +61,7 @@ public interface DrawEntrySummaryRepository extends JpaRepository<DrawEntrySumma
                     select d.userId as userId, d.entryCount as entryCount
                     from DrawEntrySummary d
                     where d.drawId = :drawId and d.entryCount > 0
+                    order by d.userId asc
             """)
     List<DrawEntrySummary.ParticipantWeight> findWeights(@Param("drawId") Long drawId);
 

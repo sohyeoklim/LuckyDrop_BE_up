@@ -8,6 +8,7 @@ import luckydrop.demo.draw.entity.Draw;
 import luckydrop.demo.draw.repository.DrawRepository;
 import luckydrop.demo.user.entity.User;
 import luckydrop.demo.user.repository.UserRepository;
+import luckydrop.demo.mission.service.DrawMissionClaimService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ public class DrawBookmarkService {
     private final DrawBookmarkRepository drawBookmarkRepository;
     private final DrawRepository drawRepository;
     private final UserRepository userRepository;
+    private final DrawMissionClaimService drawMissionClaimService;
 
     //찜하기
     public void bookmark(Long userId, Long drawId) {
@@ -41,6 +43,7 @@ public class DrawBookmarkService {
 
         DrawBookmark bookmark = DrawBookmark.of(user, draw);
         drawBookmarkRepository.save(bookmark);
+        drawMissionClaimService.rewardFirstBookmark(userId);
     }
 
     //찜 취소

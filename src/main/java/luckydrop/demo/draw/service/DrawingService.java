@@ -9,14 +9,17 @@ import luckydrop.demo.draw.entity.DrawWinner;
 import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.repository.DrawRepository;
 import luckydrop.demo.draw.repository.DrawWinnerRepository;
+import luckydrop.demo.draw.verification.DrawVerification;
 import luckydrop.demo.entry.repository.DrawEntrySummaryRepository;
 import luckydrop.demo.notification.NotificationService;
+import luckydrop.demo.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class DrawingService {
     private final DrawWinnerRepository drawWinnerRepository;
     private final DrawEntrySummaryRepository drawEntrySummaryRepository;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
 
     // 특정 드로우 전체 당첨자 조회
@@ -65,17 +69,28 @@ public class DrawingService {
             throw new BusinessException("추첨을 진행할 수 없습니다. (상태가 DARWING이 아니거나 이미 처리됨)");
         }
 
-        List<DrawEntrySummary.ParticipantWeight> candidates = drawEntrySummaryRepository.findWeights(drawId);
-        if (candidates.isEmpty()) {
-            return List.of();
-        }
-
-        // winnerCount는 Draw에서 읽어야 하나까 draw 조회 1번 필요
+        // 상태 선점 후 현재 드로우와, userId 기준으로 정렬된 참여자 스냅샷을 고정한다.
         Draw draw = drawRepository.findByIdForUpdate(drawId)
                 .orElseThrow(() -> new BusinessException("드로우가 존재하지 않습니다."));
 
         if (drawWinnerRepository.existsByDrawId(drawId)) {
             throw new BusinessException("이미 추첨이 완료된 드로우입니다.");
+        }
+
+        if (draw.getServerSeed() == null) {
+            // 기존 드로우는 생성 시점의 커밋이 없으므로 UI에서 LEGACY로 표시한다.
+            DrawVerification.Proof legacyProof = DrawVerification.newProof();
+            draw.initializeLegacyDrawingSeed(
+                    legacyProof.seed(), legacyProof.hash(), DrawVerification.ALGORITHM_VERSION);
+        }
+
+        List<DrawEntrySummary.ParticipantWeight> candidates = drawEntrySummaryRepository.findWeights(drawId);
+        LocalDateTime drawnAt = LocalDateTime.now();
+        draw.completeVerification(snapshotHash(candidates), drawnAt);
+
+        if (candidates.isEmpty()) {
+            notificationService.notifyDrawFinished(drawId);
+            return List.of();
         }
 
         int winnerCount = draw.getWinnerCount();
@@ -85,14 +100,20 @@ public class DrawingService {
 
         int k  = Math.min(winnerCount, candidates.size());
 
-        List<Long> winnerUserIds = pickWeightedWinners(candidates, k);
+        List<Long> winnerUserIds = pickWeightedWinners(draw, candidates, k);
 
         List<DrawWinner> winners = new ArrayList<>();
         for (Long userId : winnerUserIds) {
-            winners.add(DrawWinner.builder()
+            DrawWinner winner = DrawWinner.builder()
                     .drawId(drawId)
                     .userId(userId)
-                    .build());
+                    .build();
+            winner.initializeDelivery(
+                    userRepository.getReferenceById(userId),
+                    draw.getInventory().isShippable(),
+                    drawnAt
+            );
+            winners.add(winner);
         }
         drawWinnerRepository.saveAll(winners);
 
@@ -101,7 +122,7 @@ public class DrawingService {
     }
 
     // 당첨자 추첨 로직
-    private List<Long> pickWeightedWinners(List<DrawEntrySummary.ParticipantWeight> candidates, int k) {
+    private List<Long> pickWeightedWinners(Draw draw, List<DrawEntrySummary.ParticipantWeight> candidates, int k) {
 
         List<Scored> scored = new ArrayList<>(candidates.size());
 
@@ -109,13 +130,13 @@ public class DrawingService {
             long w = c.getEntryCount();
             if (w <= 0) continue;
 
-            double u = Math.max(Math.random(), 1e-12);
+            double u = DrawVerification.unitInterval(draw.getServerSeed(), draw.getId(), c.getUserId());
             double key = -Math.log(u) / (double) w;
 
             scored.add(new Scored(c.getUserId(), key));
         }
 
-        scored.sort(Comparator.comparingDouble(Scored::key));
+        scored.sort(Comparator.comparingDouble(Scored::key).thenComparing(Scored::userId));
 
         return scored.stream()
                 .limit(k)
@@ -124,6 +145,17 @@ public class DrawingService {
     }
 
     private record Scored(Long userId, double key) {}
+
+    private String snapshotHash(List<DrawEntrySummary.ParticipantWeight> candidates) {
+        StringBuilder snapshot = new StringBuilder();
+        for (DrawEntrySummary.ParticipantWeight candidate : candidates) {
+            snapshot.append(candidate.getUserId())
+                    .append(':')
+                    .append(candidate.getEntryCount())
+                    .append('\n');
+        }
+        return DrawVerification.sha256Hex(snapshot.toString());
+    }
 
     private String maskNickname(String nickname) {
         if (nickname == null || nickname.isBlank()) {

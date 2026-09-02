@@ -6,6 +6,7 @@ import luckydrop.demo.draw.dto.request.DrawCreateRequest;
 import luckydrop.demo.draw.dto.request.DrawUpdateRequest;
 import luckydrop.demo.draw.dto.response.DrawDetailResponse;
 import luckydrop.demo.draw.entity.Draw;
+import luckydrop.demo.draw.verification.DrawVerification;
 import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.inventory.entity.Inventory;
 import luckydrop.demo.draw.inventory.entity.InventoryImage;
@@ -147,6 +148,14 @@ public class DrawService {
                 .endAt(req.getEndAt())
                 .status(DrawStatus.DRAFT)
                 .build();
+
+        DrawVerification.Proof proof = DrawVerification.newProof();
+        draw.initializeVerification(
+                proof.seed(),
+                proof.hash(),
+                DrawVerification.ALGORITHM_VERSION,
+                LocalDateTime.now()
+        );
 
         //더블 클릭해서 중복 드로우가 될 것을 방지
         try {

@@ -9,7 +9,7 @@ spring:
 
   # JWT Secret key
 jwt:
-  secret: "bHVja3lkcm9wc2VjcmV0YWNjZXNzdG9rZW5sdWNreWRyb3BzZWNyZXRhY2Nlc3N0b2tlbg=="
+  secret: ${JWT_SECRET}
   expiration: 3000 #분
 
 springdoc:

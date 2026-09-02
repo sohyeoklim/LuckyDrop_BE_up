@@ -8,6 +8,8 @@ import luckydrop.demo.mission.repository.UserMissionRepository;
 import luckydrop.demo.ticket.dto.request.TicketEarnReqDto;
 import luckydrop.demo.ticket.service.TicketService;
 import luckydrop.demo.entry.repository.DrawEntrySummaryRepository;
+import luckydrop.demo.user.entity.User;
+import luckydrop.demo.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,48 @@ public class DrawMissionClaimService {
     private final UserMissionRepository userMissionRepository;
     private final TicketService ticketService;
     private final DrawEntrySummaryRepository drawEntrySummaryRepository;
+    private final UserRepository userRepository;
+
+    @Transactional
+    public void rewardEntryMissions(Long userId) {
+        rewardOnce(userId, "DRAW_FIRST", "LIFETIME", "첫 응모 보상");
+        rewardOnce(userId, "DRAW_DAILY", LocalDate.now().toString(), "일일 응모 보상");
+        rewardReferralAfterFirstEntry(userId);
+    }
+
+    @Transactional
+    public void rewardFirstBookmark(Long userId) {
+        rewardOnce(userId, "BOOKMARK_FIRST", "LIFETIME", "첫 관심 드로우 보상");
+    }
+
+    private void rewardOnce(Long userId, String missionCode, String periodKey, String reason) {
+        Mission mission = missionRepository.findByCode(missionCode)
+                .orElseThrow(() -> new IllegalStateException("미션 없음: " + missionCode));
+        if (userMissionRepository.existsByUserIdAndMissionIdAndPeriodKey(userId, mission.getId(), periodKey)) {
+            return;
+        }
+        userMissionRepository.save(UserMission.builder()
+                .userId(userId).missionId(mission.getId()).periodKey(periodKey)
+                .progressCount(1).completedAt(LocalDateTime.now()).rewardedAt(LocalDateTime.now()).build());
+        ticketService.earnTickets(TicketEarnReqDto.builder()
+                .userId(userId).amount(mission.getRewardTicketAmount()).reason(reason)
+                .refType("MISSION").refId(mission.getId())
+                .idempotencyKey(missionCode + ":" + userId + ":" + periodKey).build());
+    }
+
+    private void rewardReferralAfterFirstEntry(Long userId) {
+        User invitedUser = userRepository.findById(userId).orElseThrow();
+        String referralCode = invitedUser.getReferredByCode();
+        if (referralCode == null || referralCode.isBlank()) return;
+        User referrer = userRepository.findByInvitationCode(referralCode).orElseThrow();
+        String key = "REFERRAL_FIRST_ENTRY:" + userId;
+        ticketService.earnTickets(TicketEarnReqDto.builder().userId(userId).amount(20)
+                .reason("추천 첫 응모 보상").refType("REFERRAL").refId(referrer.getId())
+                .idempotencyKey(key + ":INVITED").build());
+        ticketService.earnTickets(TicketEarnReqDto.builder().userId(referrer.getId()).amount(20)
+                .reason("친구 첫 응모 보상").refType("REFERRAL").refId(userId)
+                .idempotencyKey(key + ":REFERRER").build());
+    }
 
     @Transactional
     public void claimFirstDrawMission(Long userId) {

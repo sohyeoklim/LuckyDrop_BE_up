@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
 
@@ -19,6 +21,12 @@ public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
     List<DrawWinner> findByUserId(Long userId);
 
     List<DrawWinner> findByDrawId(Long drawId);
+
+    Optional<DrawWinner> findByDrawIdAndUserId(Long drawId, Long userId);
+    long countByDrawIdAndFulfillmentStatus(Long drawId, luckydrop.demo.draw.enums.FulfillmentStatus status);
+
+    List<DrawWinner> findByFulfillmentStatusAndAddressDeadlineAtBefore(
+            luckydrop.demo.draw.enums.FulfillmentStatus status, LocalDateTime now);
 
     // 특정 드로우 당첨자 응모한 티켓수, 닉네임 가져오기
     @Query("""
@@ -39,10 +47,11 @@ public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
         u.id,
         u.name,
         u.nickname,
-        u.phone,
-        u.address,
+        dw.deliveryPhone,
+        dw.deliveryAddress,
         dw.fulfillmentStatus,
-        dw.fulfillmentNote
+        dw.fulfillmentNote,
+        dw.trackingNumber
         )
         from DrawWinner dw
         join dw.user u

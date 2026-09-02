@@ -88,14 +88,19 @@ public class DrawCancelService {
 
         for (var t : targets) {
             Long userId = t.getUserId();
-            Long amount = t.getEntryCount();
+            long entryCount = t.getEntryCount();
 
-            if (amount== null || amount <= 0) continue;
+            if (entryCount <= 0) continue;
 
-            ticketService.refundTickets(userId, amount);
+            long refundAmount = Math.multiplyExact(
+                    entryCount,
+                    draw.getTicketCostEntry().longValue()
+            );
+
+            ticketService.refundTickets(userId, refundAmount);
 
             User userRef = userRepository.getReferenceById(userId);
-            int amt = Math.toIntExact(amount);
+            int amt = Math.toIntExact(refundAmount);
             TicketLedger ledger = TicketLedgerFactory.refundByDrawForceCancel(userRef, drawId, amt, reasonCode);
             ticketLedgerRepository.save(ledger);
         }
