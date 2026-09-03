@@ -6,6 +6,8 @@ import luckydrop.demo.draw.dto.request.DrawCreateRequest;
 import luckydrop.demo.draw.dto.request.DrawUpdateRequest;
 import luckydrop.demo.draw.dto.response.DrawDetailResponse;
 import luckydrop.demo.draw.entity.Draw;
+import luckydrop.demo.draw.metrics.entity.DrawMetrics;
+import luckydrop.demo.draw.metrics.repository.DrawMetricsRepository;
 import luckydrop.demo.draw.verification.DrawVerification;
 import luckydrop.demo.draw.enums.DrawStatus;
 import luckydrop.demo.draw.inventory.entity.Inventory;
@@ -38,6 +40,7 @@ public class DrawService {
     private final DrawEntrySummaryRepository drawEntrySummaryRepository;
     private final DrawBookmarkService drawBookmarkService;
     private final UserRepository userRepository;
+    private final DrawMetricsRepository drawMetricsRepository;
 
     @Transactional
     public DrawDetailResponse updateDraw(Long drawId, Long requesterUserId, DrawUpdateRequest request) {
@@ -160,6 +163,7 @@ public class DrawService {
         //더블 클릭해서 중복 드로우가 될 것을 방지
         try {
             drawRepository.save(draw);
+            drawMetricsRepository.save(DrawMetrics.empty(draw.getId()));
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException("이미 이 상품으로 생성된 드로우가 있어요");
         }
