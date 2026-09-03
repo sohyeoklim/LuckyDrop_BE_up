@@ -6,5 +6,7 @@ public enum FulfillmentStatus {
     PENDING,
     PROCESSING,
     COMPLETED,
-    EXPIRED
+    EXPIRED,
+    REWARD_PENDING,
+    REWARD_DELIVERED
 }

@@ -7,9 +7,10 @@ import java.time.LocalDateTime;
 
 public record MyDeliveryResponse(Long winnerId, String phone, String address,
                                  LocalDateTime addressDeadlineAt, FulfillmentStatus fulfillmentStatus,
+                                 String deliveryCarrier,
                                  String trackingNumber) {
     public static MyDeliveryResponse from(DrawWinner winner) {
         return new MyDeliveryResponse(winner.getId(), winner.getDeliveryPhone(), winner.getDeliveryAddress(),
-                winner.getAddressDeadlineAt(), winner.getFulfillmentStatus(), winner.getTrackingNumber());
+                winner.getAddressDeadlineAt(), winner.getFulfillmentStatus(), winner.getDeliveryCarrier(), winner.getTrackingNumber());
     }
 }

@@ -17,8 +17,12 @@ public class DrawDeliveryScheduler {
     @Scheduled(fixedDelay = 60_000)
     @Transactional
     public void expireUnsubmittedAddresses() {
+        LocalDateTime now = LocalDateTime.now();
         drawWinnerRepository.findByFulfillmentStatusAndAddressDeadlineAtBefore(
-                        FulfillmentStatus.ADDRESS_REQUIRED, LocalDateTime.now())
+                        FulfillmentStatus.ADDRESS_REQUIRED, now)
                 .forEach(winner -> winner.expireAddressSubmission());
+        drawWinnerRepository.findByFulfillmentStatusAndRewardDeliveryDeadlineAtBefore(
+                        FulfillmentStatus.REWARD_PENDING, now)
+                .forEach(winner -> winner.expireRewardDelivery());
     }
 }

@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import luckydrop.demo.user.entity.User;
 import luckydrop.demo.draw.enums.FulfillmentStatus;
+import luckydrop.demo.draw.reward.entity.WinnerReward;
 
 import java.time.LocalDateTime;
 
@@ -49,6 +50,9 @@ public class DrawWinner {
     )
     private User user;
 
+    @OneToOne(mappedBy = "winner", fetch = FetchType.LAZY)
+    private WinnerReward reward;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "fulfillment_status", nullable = false, length = 20)
     private FulfillmentStatus fulfillmentStatus = FulfillmentStatus.PENDING;
@@ -71,8 +75,14 @@ public class DrawWinner {
     @Column(name = "address_submitted_at")
     private LocalDateTime addressSubmittedAt;
 
+    @Column(name = "reward_delivery_deadline_at")
+    private LocalDateTime rewardDeliveryDeadlineAt;
+
     @Column(name = "tracking_number", length = 100)
     private String trackingNumber;
+
+    @Column(name = "delivery_carrier", length = 50)
+    private String deliveryCarrier;
 
     @Builder
     public DrawWinner(Long drawId, Long userId) {
@@ -80,30 +90,54 @@ public class DrawWinner {
         this.userId = userId;
     }
 
-    public void updateFulfillment(FulfillmentStatus status, String note, String trackingNumber) {
+    public void updateFulfillment(FulfillmentStatus status, String note, String deliveryCarrier, String trackingNumber) {
         this.fulfillmentStatus = status;
         this.fulfillmentNote = note;
+        this.deliveryCarrier = deliveryCarrier;
         this.trackingNumber = trackingNumber;
         this.fulfilledAt = status == FulfillmentStatus.COMPLETED ? LocalDateTime.now() : null;
     }
 
-    public void initializeDelivery(User user, boolean shippable, LocalDateTime now) {
-        if (!shippable) return;
+    public void initializeShipping(User user, LocalDateTime now) {
+        // 프로필 정보는 배송지 입력 화면의 초기값으로만 사용한다.
+        // 당첨자가 직접 확인·제출하기 전까지는 배송지 제출 상태가 아니다.
         this.deliveryPhone = user.getPhone();
         this.deliveryAddress = user.getAddress();
         this.addressDeadlineAt = now.plusDays(3);
-        if (deliveryPhone == null || deliveryPhone.isBlank() || deliveryAddress == null || deliveryAddress.isBlank()) {
-            this.fulfillmentStatus = FulfillmentStatus.ADDRESS_REQUIRED;
-        } else {
-            this.fulfillmentStatus = FulfillmentStatus.ADDRESS_SUBMITTED;
-            this.addressSubmittedAt = now;
-        }
+        this.addressSubmittedAt = null;
+        this.fulfillmentStatus = FulfillmentStatus.ADDRESS_REQUIRED;
+    }
+
+    public void initializeRewardDelivery(LocalDateTime now) {
+        this.rewardDeliveryDeadlineAt = now.plusDays(5);
+        this.fulfillmentStatus = FulfillmentStatus.REWARD_PENDING;
     }
 
     public void expireAddressSubmission() {
         if (fulfillmentStatus == FulfillmentStatus.ADDRESS_REQUIRED) {
             fulfillmentStatus = FulfillmentStatus.EXPIRED;
         }
+    }
+
+    public void expireRewardDelivery() {
+        if (fulfillmentStatus == FulfillmentStatus.REWARD_PENDING) {
+            fulfillmentStatus = FulfillmentStatus.EXPIRED;
+        }
+    }
+
+    public void markRewardDelivered() {
+        if (fulfillmentStatus != FulfillmentStatus.REWARD_PENDING) {
+            throw new IllegalStateException("전달 대기 중인 비배송 보상만 전달할 수 있습니다.");
+        }
+        this.fulfillmentStatus = FulfillmentStatus.REWARD_DELIVERED;
+    }
+
+    public void completeReward() {
+        if (fulfillmentStatus != FulfillmentStatus.REWARD_DELIVERED) {
+            throw new IllegalStateException("전달된 보상만 수령 완료할 수 있습니다.");
+        }
+        this.fulfillmentStatus = FulfillmentStatus.COMPLETED;
+        this.fulfilledAt = LocalDateTime.now();
     }
 
     public void submitDeliveryAddress(String phone, String address) {

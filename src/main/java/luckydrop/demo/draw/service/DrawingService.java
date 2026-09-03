@@ -108,11 +108,11 @@ public class DrawingService {
                     .drawId(drawId)
                     .userId(userId)
                     .build();
-            winner.initializeDelivery(
-                    userRepository.getReferenceById(userId),
-                    draw.getInventory().isShippable(),
-                    drawnAt
-            );
+            if (draw.getInventory().isShippable()) {
+                winner.initializeShipping(userRepository.getReferenceById(userId), drawnAt);
+            } else {
+                winner.initializeRewardDelivery(drawnAt);
+            }
             winners.add(winner);
         }
         drawWinnerRepository.saveAll(winners);

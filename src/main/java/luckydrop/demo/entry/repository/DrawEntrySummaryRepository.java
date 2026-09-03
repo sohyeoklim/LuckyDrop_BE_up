@@ -107,7 +107,8 @@ public interface DrawEntrySummaryRepository extends JpaRepository<DrawEntrySumma
         CAST(COALESCE(des.entry_count, 1) AS SIGNED) as entryCount,
         d.status as status,  -- ✅ DrawStatus 그대로 반환
         DATE_FORMAT(d.end_at, '%Y-%m-%d %H:%i') as resultDate,
-        CAST(CASE WHEN dw.id IS NOT NULL THEN 1 ELSE 0 END AS SIGNED) as isWinner
+        CAST(CASE WHEN dw.id IS NOT NULL THEN 1 ELSE 0 END AS SIGNED) as isWinner,
+        i.shippable as shippable
     FROM draw_entry_summary des
     JOIN draw d ON des.draw_id = d.id
     LEFT JOIN inventory i ON d.inventory_id = i.id
@@ -123,7 +124,7 @@ public interface DrawEntrySummaryRepository extends JpaRepository<DrawEntrySumma
       AND (:fromDate IS NULL OR des.created_at >= :fromDate)
       AND (:toDate IS NULL OR des.created_at <= :toDate)
     GROUP BY d.id, des.draw_id, des.user_id, d.title, ii.image_url, 
-             des.updated_at, des.entry_count, d.status, dw.id, d.end_at
+             des.updated_at, des.entry_count, d.status, dw.id, d.end_at, i.shippable
     ORDER BY des.updated_at DESC
     """,
             countQuery = """

@@ -28,6 +28,9 @@ public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
     List<DrawWinner> findByFulfillmentStatusAndAddressDeadlineAtBefore(
             luckydrop.demo.draw.enums.FulfillmentStatus status, LocalDateTime now);
 
+    List<DrawWinner> findByFulfillmentStatusAndRewardDeliveryDeadlineAtBefore(
+            luckydrop.demo.draw.enums.FulfillmentStatus status, LocalDateTime now);
+
     // 특정 드로우 당첨자 응모한 티켓수, 닉네임 가져오기
     @Query("""
         select new luckydrop.demo.draw.dto.response.DrawWinnerResponse$WinnerItem(
@@ -51,10 +54,15 @@ public interface DrawWinnerRepository  extends JpaRepository<DrawWinner, Long> {
         dw.deliveryAddress,
         dw.fulfillmentStatus,
         dw.fulfillmentNote,
-        dw.trackingNumber
+        dw.deliveryCarrier,
+        dw.trackingNumber,
+        wr.title,
+        wr.deliveryType,
+        wr.deliveredAt
         )
         from DrawWinner dw
         join dw.user u
+        left join dw.reward wr
         where dw.drawId = :drawId
         order by dw.id asc
 """)

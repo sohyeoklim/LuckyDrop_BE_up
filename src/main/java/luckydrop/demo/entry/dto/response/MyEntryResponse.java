@@ -18,4 +18,5 @@ public class MyEntryResponse {
     private String status;     // OPEN, LOCKED, DRAWING, DONE, WON, LOST
     private String resultDate; // null 가능
     private Long isWinner;  // DrawWinner 존재 여부
+    private Boolean shippable;
 }

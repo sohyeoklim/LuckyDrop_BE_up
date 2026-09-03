@@ -3,5 +3,6 @@ package luckydrop.demo.draw.dto.response;
 import luckydrop.demo.draw.enums.DrawStatus;
 import java.time.LocalDateTime;
 
-public record HostDrawResponse(Long drawId, String title, DrawStatus status, LocalDateTime endAt, boolean readyForFulfillment) {
+public record HostDrawResponse(Long drawId, String title, DrawStatus status, LocalDateTime endAt,
+                               boolean shippable, boolean readyForFulfillment) {
 }

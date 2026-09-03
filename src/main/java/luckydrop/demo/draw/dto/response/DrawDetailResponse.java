@@ -35,6 +35,7 @@ public class DrawDetailResponse {
     private String brand;
     private String productDescription;
     private Integer price;
+    private boolean shippable;
     private List<String> images;
 
     private Integer myTicketBalance;
@@ -79,6 +80,7 @@ public class DrawDetailResponse {
                 .brand(draw.getInventory().getBrand())
                 .productDescription(draw.getInventory().getDescription())
                 .price(draw.getInventory().getRetailPrice())
+                .shippable(draw.getInventory().isShippable())
                 .images(
                         draw.getInventory().getImages()
                                 .stream()

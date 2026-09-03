@@ -270,7 +270,11 @@ public class DrawQueryService {
                 && winner.getFulfillmentStatus() != luckydrop.demo.draw.enums.FulfillmentStatus.PROCESSING) {
             throw new IllegalStateException("당첨자가 배송 정보를 제출한 뒤에만 처리할 수 있습니다.");
         }
-        winner.updateFulfillment(request.status(), request.note(), request.trackingNumber());
+        if (request.status() != luckydrop.demo.draw.enums.FulfillmentStatus.PROCESSING
+                && request.status() != luckydrop.demo.draw.enums.FulfillmentStatus.COMPLETED) {
+            throw new IllegalArgumentException("배송 처리는 처리 중 또는 처리 완료로만 변경할 수 있습니다.");
+        }
+        winner.updateFulfillment(request.status(), request.note(), request.deliveryCarrier(), request.trackingNumber());
         notificationService.notifyFulfillmentUpdated(draw, winner);
     }
 
@@ -292,7 +296,9 @@ public class DrawQueryService {
     @Transactional(readOnly = true)
     public Page<HostDrawResponse> getHostDraws(Long userId, Pageable pageable) {
         return drawRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(draw -> new HostDrawResponse(draw.getId(), draw.getTitle(), draw.getStatus(), draw.getEndAt(), drawWinnerRepository.countByDrawIdAndFulfillmentStatus(draw.getId(), luckydrop.demo.draw.enums.FulfillmentStatus.ADDRESS_SUBMITTED) > 0))
+                .map(draw -> new HostDrawResponse(draw.getId(), draw.getTitle(), draw.getStatus(), draw.getEndAt(),
+                        draw.getInventory().isShippable(),
+                        drawWinnerRepository.countByDrawIdAndFulfillmentStatus(draw.getId(), luckydrop.demo.draw.enums.FulfillmentStatus.ADDRESS_SUBMITTED) > 0))
                 ;
     }
 

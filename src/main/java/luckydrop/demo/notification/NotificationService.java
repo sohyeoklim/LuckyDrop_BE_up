@@ -100,6 +100,16 @@ public class NotificationService {
         notificationSseService.publishAfterCommit(notification);
     }
 
+    @Transactional
+    public void notifyRewardDelivered(Draw draw, DrawWinner winner) {
+        Notification notification = notificationRepository.save(Notification.builder()
+                .userId(winner.getUserId()).type(NotificationType.REWARD_DELIVERED)
+                .title("당첨 보상이 도착했어요")
+                .message("'" + draw.getTitle() + "'의 보상을 보상함에서 확인하세요.")
+                .drawId(draw.getId()).build());
+        notificationSseService.publishAfterCommit(notification);
+    }
+
     private Draw getDraw(Long drawId) {
         return drawRepository.findById(drawId)
                 .orElseThrow(() -> new IllegalArgumentException("draw not found: " + drawId));
