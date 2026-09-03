@@ -4,6 +4,7 @@ import luckydrop.demo.draw.bookmark.entity.DrawBookmark;
 import luckydrop.demo.draw.bookmark.entity.DrawBookmarkId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +15,14 @@ public interface DrawBookmarkRepository extends JpaRepository<DrawBookmark, Draw
 
     //단건 체크
     boolean existsByIdUserIdAndIdDrawId(Long userId, Long drawId);
+
+    /** 복합 PK 충돌 시 0을 반환하는 멱등 삽입. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            INSERT IGNORE INTO draw_bookmark (user_id, draw_id, created_at, updated_at)
+            VALUES (:userId, :drawId, NOW(6), NOW(6))
+            """, nativeQuery = true)
+    int insertIgnore(@Param("userId") Long userId, @Param("drawId") Long drawId);
 
     //찜 취소
     long deleteByIdUserIdAndIdDrawId(Long userId, Long drawId);

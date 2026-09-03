@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import luckydrop.demo.draw.entity.Draw;
+import luckydrop.demo.draw.metrics.repository.DrawMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import luckydrop.demo.entry.repository.DrawEntrySummaryRepository;
 import luckydrop.demo.draw.repository.DrawRepository;
@@ -29,6 +30,7 @@ public class DrawEntryService {
     private final DrawEntrySummaryRepository entrySummaryRepository;
     private final TicketService ticketService;
     private final DrawMissionClaimService drawMissionClaimService;
+    private final DrawMetricsRepository drawMetricsRepository;
 
     @Transactional
     public DrawEntryResponse enter(Long drawId, Long userId, int count, String idempotencyKey) {
@@ -58,7 +60,8 @@ public class DrawEntryService {
                 .build());
 
         // 2. 응모 횟수 증가
-        upsertEntrySummary(drawId, userId, count);
+        boolean isNewParticipant = upsertEntrySummary(drawId, userId, count);
+        drawMetricsRepository.applyDeltas(drawId, 0, isNewParticipant ? 1 : 0, count);
         drawMissionClaimService.rewardEntryMissions(userId);
 
         long currentEntryCount = getCurrentEntryCount(drawId, userId);
@@ -75,7 +78,7 @@ public class DrawEntryService {
                 .build();
     }
 
-    private void upsertEntrySummary(Long drawId, Long userId, int entryCountToAdd) {
+    private boolean upsertEntrySummary(Long drawId, Long userId, int entryCountToAdd) {
         log.info("entry summary upsert: draw={}, user={}, addCount={}",
                 drawId, userId, entryCountToAdd);
 
@@ -84,6 +87,9 @@ public class DrawEntryService {
         if (affectedRows <= 0) {
             throw new IllegalStateException("failed to upsert draw entry summary");
         }
+
+        // MySQL ON DUPLICATE KEY UPDATE: 새 행 INSERT는 1, 기존 행 UPDATE는 2를 반환한다.
+        return affectedRows == 1;
     }
 
     private long getCurrentEntryCount(Long drawId, Long userId) {

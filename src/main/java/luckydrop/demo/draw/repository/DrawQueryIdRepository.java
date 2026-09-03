@@ -1,6 +1,7 @@
 package luckydrop.demo.draw.repository;
 
 import luckydrop.demo.draw.entity.Draw;
+import luckydrop.demo.draw.metrics.entity.DrawMetrics;
 import luckydrop.demo.draw.enums.DrawStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -104,13 +105,14 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
     @Query("""
         select d.id
         from Draw d
+        left join DrawMetrics m on m.drawId = d.id
         where (:tab = 'ALL' and d.status <> :cancel)
            or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
         order by
-            (select count(b) from luckydrop.demo.draw.bookmark.entity.DrawBookmark b where b.id.drawId = d.id) desc,
+            coalesce(m.bookmarkCount, 0) desc,
             d.createdAt desc
     """)
     Page<Long> findIdsByBookmark(
@@ -128,13 +130,14 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
     @Query("""
         select d.id
         from Draw d
+        left join DrawMetrics m on m.drawId = d.id
         where (:tab = 'ALL' and d.status <> :cancel)
            or (:tab = 'OPEN' and d.status in (:draft, :active, :drawing))
            or (:tab = 'UPCOMING' and d.status = :draft and d.startAt > :now)
            or (:tab = 'ONGOING' and (d.status = :active or d.status = :drawing) and d.startAt <= :now and d.endAt > :now)
            or (:tab = 'CLOSED' and (d.status = :close or d.endAt <= :now))
         order by
-            (select count(s) from DrawEntrySummary s where s.drawId = d.id) desc,
+            coalesce(m.participantCount, 0) desc,
             d.createdAt desc
     """)
     Page<Long> findIdsByParticipant(
@@ -152,11 +155,12 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
     @Query("""
         select d.id
         from Draw d
+        left join DrawMetrics m on m.drawId = d.id
         where (d.status = :active or d.status = :drawing)
           and d.startAt <= :now
           and d.endAt > :now
         order by
-          (select count(s) from DrawEntrySummary s where s.drawId = d.id) desc,
+          coalesce(m.participantCount, 0) desc,
           d.endAt asc,
           d.createdAt desc
     """)
@@ -170,11 +174,11 @@ public interface DrawQueryIdRepository extends JpaRepository<Draw, Long> {
     @Query("""
         select d.id
         from Draw d
+        left join DrawMetrics m on m.drawId = d.id
         where d.status = :draft
           and d.startAt > :now
         order by
-          (select count(b) from luckydrop.demo.draw.bookmark.entity.DrawBookmark b
-            where b.id.drawId = d.id) desc,
+          coalesce(m.bookmarkCount, 0) desc,
           d.startAt asc,
           d.createdAt desc
     """)
