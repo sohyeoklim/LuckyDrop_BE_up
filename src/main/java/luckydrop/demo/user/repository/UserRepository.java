@@ -2,6 +2,7 @@ package luckydrop.demo.user.repository;
 
 import jakarta.validation.constraints.Size;
 import luckydrop.demo.user.entity.User;
+import luckydrop.demo.user.entity.AuthProvider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,8 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
+
+    Optional<User> findByAuthProviderAndProviderId(AuthProvider authProvider, String providerId);
 
     boolean existsByNickname(@Size(min = 2, message = "닉네임은 최소 2자 이상이어야 합니다.") String nickname);
 

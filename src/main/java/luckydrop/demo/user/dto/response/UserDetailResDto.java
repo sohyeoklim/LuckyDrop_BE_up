@@ -20,5 +20,6 @@ public class UserDetailResDto {
     private String address;
     private String invitationCode;
     private String role;
+    private boolean googleLinked;
     private LocalDateTime createdAt;
 }
