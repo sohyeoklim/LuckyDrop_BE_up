@@ -8,6 +8,7 @@ import luckydrop.demo.ticket.dto.request.TicketEarnReqDto;
 import luckydrop.demo.ticket.service.TicketService;
 import luckydrop.demo.user.dto.request.ChangePasswordReqDto;
 import luckydrop.demo.user.dto.request.ProfileUpdateReqDto;
+import luckydrop.demo.user.dto.request.GoogleProfileCompleteRequest;
 import luckydrop.demo.user.dto.request.UserLoginReqDto;
 import luckydrop.demo.user.dto.request.UserSaveReqDto;
 import luckydrop.demo.user.dto.response.AdminUserResDto;
@@ -15,6 +16,7 @@ import luckydrop.demo.user.dto.response.UserDetailResDto;
 import luckydrop.demo.user.dto.response.UserListResDto;
 import luckydrop.demo.user.dto.response.UserInfoResDto;
 import luckydrop.demo.user.entity.Role;
+import luckydrop.demo.user.entity.AuthProvider;
 import luckydrop.demo.user.entity.User;
 import luckydrop.demo.user.entity.RefreshToken;
 import luckydrop.demo.user.repository.UserRepository;
@@ -61,6 +63,12 @@ public class UserService {
 
         User savedUser = userRepository.save(newUser);
 
+        initializeNewUser(savedUser);
+
+        return savedUser;
+    }
+
+    private void initializeNewUser(User savedUser) {
         // 지갑 생성
         TicketWallet ticketWallet = TicketWallet.builder()
                 .user(savedUser)
@@ -81,7 +89,6 @@ public class UserService {
                         .build()
         );
 
-        return savedUser;
     }
 
 
@@ -95,18 +102,22 @@ public class UserService {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
+        return issueTokens(findUser);
+    }
+
+    public Map<String, Object> issueTokens(User user) {
         // 액세스 토큰 생성
-        String accessToken = jwtTokenProvider.createAccessToken(findUser.getEmail(), String.valueOf(findUser.getRole()));
+        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), String.valueOf(user.getRole()));
 
         // 리프레시 토큰 생성
-        String refreshToken = jwtTokenProvider.createRefreshToken(findUser.getEmail(), String.valueOf(findUser.getRole()));
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getEmail(), String.valueOf(user.getRole()));
 
         // 리프레시 토큰의 만료 시간
         LocalDateTime refreshTokenExpireTime = LocalDateTime.now().plusSeconds(JwtTokenProvider.REFRESH_TOKEN_VALIDITY_SECONDS / 1000);
 
         // 토큰 빌더 엔티티 생성
         RefreshToken newRefreshToken = RefreshToken.builder()
-                .user(findUser)
+                .user(user)
                 .token(refreshToken)
                 .expiredAt(refreshTokenExpireTime)
                 .build();
@@ -116,10 +127,10 @@ public class UserService {
 
         // 사용자 정보 생성
         UserInfoResDto userInfo = new UserInfoResDto(
-                findUser.getId(),
-                findUser.getNickname(),
-                findUser.getEmail(),
-                findUser.getRole()
+                user.getId(),
+                user.getNickname(),
+                user.getEmail(),
+                user.getRole()
 
         );
 
@@ -128,8 +139,91 @@ public class UserService {
         authData.put("refreshToken", refreshToken);
         authData.put("userInfo", userInfo);
 
-        log.info("로그인 성공 및 토큰 생성. email = {}", email);
+        log.info("로그인 성공 및 토큰 생성. email = {}", user.getEmail());
         return authData;
+    }
+
+    public User loginWithGoogle(String providerId, String email, boolean emailVerified, String name) {
+        if (providerId == null || providerId.isBlank() || email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Google 계정 정보를 확인할 수 없습니다.");
+        }
+        if (!emailVerified) {
+            throw new IllegalArgumentException("Google에서 이메일 인증이 완료된 계정만 로그인할 수 있습니다.");
+        }
+
+        Optional<User> linkedUser = userRepository.findByAuthProviderAndProviderId(AuthProvider.GOOGLE, providerId);
+        if (linkedUser.isPresent()) {
+            return linkedUser.get();
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "이미 가입된 이메일입니다. 기존 계정으로 로그인한 뒤 Google 계정을 연동해주세요.");
+        }
+
+        User user = User.builder()
+                .name(name == null || name.isBlank() ? "Google User" : name)
+                .nickname(generateUniqueGoogleNickname())
+                .email(email)
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .phone("")
+                .authProvider(AuthProvider.GOOGLE)
+                .providerId(providerId)
+                .invitationCode(generateUniqueInvitationCode())
+                .status("PROFILE_REQUIRED")
+                .build();
+
+        User savedUser = userRepository.save(user);
+        initializeNewUser(savedUser);
+        return savedUser;
+    }
+
+    /**
+     * 기존 LuckyDrop 로그인 상태에서만 호출되는 Google 계정 연동 처리.
+     * Google 이메일과 LuckyDrop 이메일이 달라도, 사용자가 직접 승인한 경우에만 연결한다.
+     */
+    public void linkGoogleAccount(long userId, String providerId, boolean emailVerified) {
+        if (providerId == null || providerId.isBlank()) {
+            throw new IllegalArgumentException("Google 계정 정보를 확인할 수 없습니다.");
+        }
+        if (!emailVerified) {
+            throw new IllegalArgumentException("Google에서 이메일 인증이 완료된 계정만 연동할 수 있습니다.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        Optional<User> linkedUser = userRepository.findByAuthProviderAndProviderId(AuthProvider.GOOGLE, providerId);
+
+        if (linkedUser.isPresent() && linkedUser.get().getId() != userId) {
+            throw new IllegalStateException("이 Google 계정은 이미 다른 LuckyDrop 계정에 연결되어 있습니다.");
+        }
+        if (linkedUser.isPresent()) {
+            return;
+        }
+
+        user.linkGoogleAccount(providerId);
+    }
+
+    public void completeGoogleProfile(long userId, GoogleProfileCompleteRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        if (!user.requiresProfileCompletion()) {
+            throw new IllegalStateException("이미 프로필 완성을 마친 회원입니다.");
+        }
+        if (userRepository.existsByNickname(request.nickname())
+                && !request.nickname().equals(user.getNickname())) {
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+        }
+
+        String referredByCode = request.referredByCode() == null ? null : request.referredByCode().trim();
+        if (referredByCode != null && !referredByCode.isBlank()) {
+            validateAndRewardReferral(userId, referredByCode);
+        } else {
+            referredByCode = null;
+        }
+
+        user.completeGoogleProfile(request.nickname(), request.phone(), referredByCode);
     }
 
     public HashMap<String, String> reissue(String refreshToken) {
@@ -186,6 +280,11 @@ public class UserService {
             refreshTokenRepository.delete(token);
             log.info("리프레시 토큰을 DB에서 제거했습니다. user: {}", token.getUser().getEmail());
         });
+    }
+
+    public void logoutAll(long userId) {
+        refreshTokenRepository.deleteAllByUser_Id(userId);
+        log.info("사용자의 모든 리프레시 토큰을 제거했습니다. userId={}", userId);
     }
 
     public List<UserListResDto> findAll(){
@@ -252,6 +351,7 @@ public class UserService {
                 .address(user.getAddress())
                 .invitationCode(user.getInvitationCode())
                 .role(user.getRole().name())
+                .googleLinked(user.getAuthProvider() == AuthProvider.GOOGLE && user.getProviderId() != null)
                 .createdAt(user.getCreatedAt())
                 .build();
     }
@@ -410,6 +510,16 @@ public class UserService {
             code.append(chars.charAt(random.nextInt(chars.length())));
         }
         return code.toString();
+    }
+
+    private String generateUniqueGoogleNickname() {
+        for (int i = 0; i < 10; i++) {
+            String nickname = "g" + generateCandidateCode();
+            if (!userRepository.existsByNickname(nickname)) {
+                return nickname;
+            }
+        }
+        throw new IllegalStateException("Google 사용자 닉네임을 생성하지 못했습니다.");
     }
 
 

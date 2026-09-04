@@ -19,11 +19,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import luckydrop.demo.common.auth.OAuth2LoginSuccessHandler;
 
 @Slf4j
 @RestController
@@ -66,7 +68,13 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<String> logout(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        if (principal != null) {
+            userService.logoutAll(principal.getUser().getId());
+        }
         cookieUtil.getCookie(request, "refreshToken").ifPresent(cookie -> {
             userService.logout(cookie.getValue());
         });
@@ -74,7 +82,14 @@ public class UserController {
         // 쿠키의 유효기간을 0으로 설정
         cookieUtil.deleteCookie(response, "refreshToken");
         cookieUtil.deleteCookie(response, "accessToken");
-        return ResponseEntity.ok("로그아웃 되었습니다.");
+        cookieUtil.deleteCookie(response, "JSESSIONID");
+        SecurityContextHolder.clearContext();
+        if (request.getSession(false) != null) {
+            request.getSession(false).invalidate();
+        }
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-store")
+                .body("로그아웃 되었습니다.");
     }
 
     @PostMapping("/token/reissue")
@@ -112,6 +127,26 @@ public class UserController {
         UserInfoResDto updatedUserInfo = userService.getUserInfo(principal.getUser().getId());
 
         return new ResponseEntity<>(updatedUserInfo, HttpStatus.OK);
+    }
+
+    @PostMapping("/onboarding")
+    public ResponseEntity<UserInfoResDto> completeGoogleOnboarding(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody GoogleProfileCompleteRequest request) {
+        userService.completeGoogleProfile(principal.getUser().getId(), request);
+        return ResponseEntity.ok(userService.getUserInfo(principal.getUser().getId()));
+    }
+
+    @PostMapping("/google/link")
+    public ResponseEntity<Map<String, String>> startGoogleLink(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            HttpServletRequest request,
+            @RequestHeader("X-Requested-With") String requestedWith) {
+        request.getSession(true).setAttribute(
+                OAuth2LoginSuccessHandler.GOOGLE_LINK_USER_ID_SESSION_KEY,
+                principal.getUser().getId()
+        );
+        return ResponseEntity.ok(Map.of("authorizationUrl", "/oauth2/authorization/google"));
     }
 
     @GetMapping("/me")

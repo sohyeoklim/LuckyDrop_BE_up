@@ -13,6 +13,10 @@ import luckydrop.demo.user.dto.request.ProfileUpdateReqDto;
 import java.util.List;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(
+        name = "uk_user_auth_provider_id",
+        columnNames = {"auth_provider", "provider_id"}
+))
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -37,6 +41,14 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", length = 20)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
 
     @Column(nullable = true)
     private String address;
@@ -78,5 +90,22 @@ public class User extends BaseEntity {
     }
     public void changeRole(Role role) {
         this.role = role;
+    }
+
+    public void linkGoogleAccount(String providerId) {
+        this.authProvider = AuthProvider.GOOGLE;
+        this.providerId = providerId;
+    }
+
+    public boolean requiresProfileCompletion() {
+        return "PROFILE_REQUIRED".equals(this.status)
+                || (this.authProvider == AuthProvider.GOOGLE && (this.phone == null || this.phone.isBlank()));
+    }
+
+    public void completeGoogleProfile(String nickname, String phone, String referredByCode) {
+        this.nickname = nickname;
+        this.phone = phone;
+        this.referredByCode = referredByCode;
+        this.status = "ACTIVE";
     }
 }
