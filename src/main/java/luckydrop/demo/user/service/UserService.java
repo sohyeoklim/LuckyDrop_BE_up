@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import luckydrop.demo.common.auth.JwtTokenProvider;
 import luckydrop.demo.ticket.dto.request.TicketEarnReqDto;
 import luckydrop.demo.ticket.service.TicketService;
+import luckydrop.demo.mission.service.DrawMissionClaimService;
 import luckydrop.demo.user.dto.request.ChangePasswordReqDto;
 import luckydrop.demo.user.dto.request.ProfileUpdateReqDto;
 import luckydrop.demo.user.dto.request.GoogleProfileCompleteRequest;
@@ -42,6 +43,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final TicketService ticketService;
+    private final DrawMissionClaimService drawMissionClaimService;
 
 
     public User create(UserSaveReqDto userSaveReqDto) {
@@ -64,6 +66,11 @@ public class UserService {
         User savedUser = userRepository.save(newUser);
 
         initializeNewUser(savedUser);
+        drawMissionClaimService.rewardLifetimeMission(savedUser.getId(), "PROFILE_COMPLETE", "프로필 완성 보상");
+        if (savedUser.getReferredByCode() != null && !savedUser.getReferredByCode().isBlank()) {
+            validateAndRewardReferral(savedUser.getId(), savedUser.getReferredByCode());
+            rewardReferralMilestones(savedUser.getReferredByCode());
+        }
 
         return savedUser;
     }
@@ -224,6 +231,10 @@ public class UserService {
         }
 
         user.completeGoogleProfile(request.nickname(), request.phone(), referredByCode);
+        drawMissionClaimService.rewardLifetimeMission(userId, "PROFILE_COMPLETE", "프로필 완성 보상");
+        if (referredByCode != null) {
+            rewardReferralMilestones(referredByCode);
+        }
     }
 
     public HashMap<String, String> reissue(String refreshToken) {
@@ -374,10 +385,8 @@ public class UserService {
         // 기존 updateProfile 패턴처럼 직접 업데이트
         user.updatePassword(encodedPassword);
 
-        log.info("사용자 {}의 비밀번호 재설정 완료", user.getId());
-
-        // TODO: refreshToken 블랙리스트에 추가 (로그아웃 효과)
-        // refreshTokenService.invalidateAllByUserId(user.getId());
+        refreshTokenRepository.deleteAllByUser_Id(user.getId());
+        log.info("사용자 {}의 비밀번호 재설정 및 모든 세션 무효화 완료", user.getId());
     }
 
     // UserService.changePassword()
@@ -488,6 +497,18 @@ public class UserService {
                         .idempotencyKey(idempotencyKey + "_REFERRER")
                         .build()
         );
+    }
+
+    private void rewardReferralMilestones(String invitationCode) {
+        User referrer = userRepository.findByInvitationCode(invitationCode)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 추천인 코드입니다."));
+        long referralCount = userRepository.countByReferredByCode(invitationCode);
+        if (referralCount >= 1) {
+            drawMissionClaimService.rewardLifetimeMission(referrer.getId(), "REFERRAL_1", "친구 초대 1명 보상");
+        }
+        if (referralCount >= 5) {
+            drawMissionClaimService.rewardLifetimeMission(referrer.getId(), "REFERRAL_5", "친구 초대 5명 보상");
+        }
     }
 
     private String generateUniqueInvitationCode() {

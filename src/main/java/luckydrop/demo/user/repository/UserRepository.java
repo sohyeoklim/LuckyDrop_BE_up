@@ -23,6 +23,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByInvitationCode(String invitationCode);
 
+    long countByReferredByCode(String referredByCode);
+
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.ticketWallet")
     List<User> findAllWithWallet();
 
