@@ -2,7 +2,6 @@
 
 LuckyDrop_up은 기존 LuckyDrop의 드로우 서비스를 바탕으로 실시간 상태 전달, 추첨 검증, 당첨 이후 처리와 운영 안정성을 확장한 프로젝트입니다. 이 저장소는 백엔드이며, [프런트엔드 저장소](https://github.com/sohyeoklim/LuckyDrop_FE_up)와 함께 사용합니다.
 
-> 이 문서는 현재 백엔드 `feat/mission` 브랜치의 구현을 기준으로 작성했습니다. 프런트엔드의 확장 화면은 현재 로컬 작업 트리에 반영되어 있으며, 원격 저장소의 브랜치에 아직 반영되지 않았을 수 있습니다.
 
 ## 기존 LuckyDrop
 
@@ -77,8 +76,6 @@ React 클라이언트
 MySQL에 빈 데이터베이스를 준비하고, Google OAuth 클라이언트의 승인된 리디렉션 URI에 `http://localhost:8080/login/oauth2/code/google`을 등록합니다. 로컬 프런트엔드 기본 주소는 `http://localhost:5173`입니다.
 
 ### 2. 백엔드 설정
-
-기본 프로필은 `dev`입니다. `src/main/resources/application-dev.yml`은 Git에서 제외되어 있으므로 직접 생성합니다. 아래는 로컬 설정 예시이며 환경에 맞게 변경합니다.
 
 ```yaml
 spring:
