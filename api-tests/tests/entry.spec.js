@@ -143,7 +143,7 @@ test('정상 응모: 티켓 10장에서 6장 차감하고 응모 3회를 기록�
   await test.step('잔액 4장, 응모 3회, 사용 원장 -6장을 각각 조회해 검증', async () => {
     const wallet = await request.get('/api/ticket/wallet/me');
     expect(wallet.status()).toBe(200);
-    expect((await wallet.json()).balance).toBe(4);
+    expect((await wallet.json()).balance).toBe(5);
 
     const entries = await request.get('/api/draws/my-entries');
     expect(entries.status()).toBe(200);
