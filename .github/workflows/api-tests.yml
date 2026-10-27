@@ -1,0 +1,99 @@
+name: API regression tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: Asia/Seoul
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api-tests/package-lock.json
+
+      - name: Install API test dependencies
+        working-directory: api-tests
+        run: npm ci
+
+      - name: Start isolated MySQL and Redis
+        run: docker compose -f compose.api-test.yml up -d --wait --wait-timeout 180
+
+      - name: Build application
+        run: bash ./gradlew --no-daemon bootJar
+
+      - name: Start application and wait for readiness
+        shell: bash
+        run: |
+          mkdir -p build/ci-logs
+          nohup java -Duser.timezone=Asia/Seoul -jar build/libs/*-SNAPSHOT.jar \
+            --spring.profiles.active=api-test > build/ci-logs/server.log 2>&1 &
+          server_pid=$!
+          echo "$server_pid" > build/ci-logs/server.pid
+          for attempt in $(seq 1 90); do
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat build/ci-logs/server.log
+              exit 1
+            fi
+            if curl --fail --silent --max-time 5 http://localhost:18080/v3/api-docs > /dev/null; then
+              echo "API server is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat build/ci-logs/server.log
+          echo "API server did not become ready in time"
+          exit 1
+
+      - name: Run API regression tests
+        working-directory: api-tests
+        run: npm test
+
+      - name: Collect service logs
+        if: always()
+        run: |
+          mkdir -p build/ci-logs
+          docker compose -f compose.api-test.yml logs --no-color > build/ci-logs/services.log 2>&1
+
+      - name: Upload reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            api-tests/playwright-report/
+            api-tests/test-results/
+            build/ci-logs/*.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop test services
+        if: always()
+        run: |
+          if [ -f build/ci-logs/server.pid ]; then
+            kill "$(cat build/ci-logs/server.pid)" 2>/dev/null || true
+          fi
+          docker compose -f compose.api-test.yml down --volumes
