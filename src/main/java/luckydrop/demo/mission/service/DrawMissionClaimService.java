@@ -38,6 +38,12 @@ public class DrawMissionClaimService {
         rewardOnce(userId, "BOOKMARK_FIRST", "LIFETIME", "첫 관심 드로우 보상");
     }
 
+    /** 이벤트 발생 시 서버에서만 호출하는 1회성 보상 진입점이다. */
+    @Transactional
+    public void rewardLifetimeMission(Long userId, String missionCode, String reason) {
+        rewardOnce(userId, missionCode, "LIFETIME", reason);
+    }
+
     private void rewardOnce(Long userId, String missionCode, String periodKey, String reason) {
         Mission mission = missionRepository.findByCode(missionCode)
                 .orElseThrow(() -> new IllegalStateException("미션 없음: " + missionCode));

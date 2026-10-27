@@ -30,7 +30,8 @@ spring:
   jpa:
     database: mysql
     hibernate:
-      ddl-auto: create
+      # 운영 데이터와 미션/티켓 이력이 재배포 때 삭제되지 않도록 스키마를 재생성하지 않는다.
+      ddl-auto: update
     properties:
       hibernate:
         show_sql: false

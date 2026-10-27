@@ -38,3 +38,8 @@ out/
 
 # Local environment configuration / secrets
 src/main/resources/application-dev.yml
+
+# API automation dependencies and generated reports
+api-tests/node_modules/
+api-tests/playwright-report/
+api-tests/test-results/

@@ -1,0 +1,37 @@
+# Local API automation only. These credentials belong to compose.api-test.yml.
+server:
+  port: 18080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:13306/luckydrop_api_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
+    username: luckydrop_test
+    password: local-test-only
+  data:
+    redis:
+      host: localhost
+      port: 16379
+  jpa:
+    hibernate:
+      ddl-auto: update
+  mail:
+    username: api-test@example.invalid
+    password: unused-test-password
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: unused-api-test-client
+            client-secret: unused-api-test-secret
+            scope: openid,profile,email
+
+jwt:
+  secret: luckydrop-api-test-only-secret-key-at-least-32-bytes-long
+
+file:
+  upload-dir: ./build/api-test-uploads
+
+app:
+  frontend-url: http://localhost:5173

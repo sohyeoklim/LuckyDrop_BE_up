@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface UserMissionRepository extends JpaRepository<UserMission, Long> {
 
@@ -25,4 +26,6 @@ public interface UserMissionRepository extends JpaRepository<UserMission, Long> 
             @Param("userId") Long userId,
             @Param("missionId") Long missionId
     );
+
+    List<UserMission> findAllByUserId(Long userId);
 }
