@@ -2,6 +2,7 @@
 
 LuckyDrop_up은 기존 LuckyDrop의 드로우 서비스를 바탕으로 실시간 상태 전달, 추첨 검증, 당첨 이후 처리와 운영 안정성을 확장한 프로젝트입니다. 이 저장소는 백엔드이며, [프런트엔드 저장소](https://github.com/sohyeoklim/LuckyDrop_FE_up)와 함께 사용합니다.
 
+> 백엔드 기능은 `feat/mission`, API 회귀 테스트와 CI는 이를 기반으로 한 `codex/api-test-ci` 브랜치의 구현을 기준으로 작성했습니다. 프런트엔드의 확장 화면은 현재 로컬 작업 트리에 반영되어 있으며, 원격 저장소의 브랜치에 아직 반영되지 않았을 수 있습니다.
 
 ## 기존 LuckyDrop
 
@@ -54,6 +55,7 @@ LuckyDrop_up은 이 구현을 이어받아 **응모 이후의 경험과 여러 �
 | 인증 | Spring Security, JWT, Google OAuth 2.0 / OpenID Connect |
 | 데이터와 운영 | MySQL, Redis Pub/Sub, ShedLock |
 | API 문서와 부하 테스트 | springdoc OpenAPI, k6 |
+| API 회귀 테스트와 CI | Playwright, GitHub Actions, Docker Compose |
 | 프런트엔드 | React, TypeScript, Vite, TanStack Query |
 
 ```text
@@ -76,6 +78,8 @@ React 클라이언트
 MySQL에 빈 데이터베이스를 준비하고, Google OAuth 클라이언트의 승인된 리디렉션 URI에 `http://localhost:8080/login/oauth2/code/google`을 등록합니다. 로컬 프런트엔드 기본 주소는 `http://localhost:5173`입니다.
 
 ### 2. 백엔드 설정
+
+기본 프로필은 `dev`입니다. `src/main/resources/application-dev.yml`은 Git에서 제외되어 있으므로 직접 생성합니다. 아래는 로컬 설정 예시이며 환경에 맞게 변경합니다.
 
 ```yaml
 spring:
@@ -155,11 +159,82 @@ npm run dev
 
 ## 테스트 및 부하 측정
 
+### API 회귀 테스트 자동화
+
+수동으로 확인하던 응모·티켓 기능을 Playwright API 테스트로 작성하고, GitHub Actions에서 코드 변경 시 반복 검증하도록 구성했습니다. HTTP 응답뿐 아니라 잔액, 응모 내역, 티켓 원장을 함께 조회해 정상 처리와 실패 시 데이터 일관성을 확인합니다.
+
+| 케이스 | 입력 및 조건 | 검증 내용 |
+| --- | --- | --- |
+| 정상 응모 | 잔액 10장, 회당 비용 2장, 3회 응모 | HTTP 200, 잔액 4장, 응모 3회, 사용 원장 -6장 1건 |
+| 티켓 부족 | 잔액 10장, 회당 비용 2장, 6회 응모 | HTTP 400 및 티켓 부족 메시지, 요청 전후 잔액·응모 내역·원장 유지 |
+| 중복 요청 | 같은 드로우에 동일한 `Idempotency-Key`와 본문으로 순차 재전송 | 첫 요청 200, 재요청 400 및 중복 메시지, 추가 차감·응모·원장 기록 없음 |
+
+각 테스트는 전용 DB에 새 사용자·호스트·드로우를 준비하고 실제 로그인 API의 쿠키를 사용합니다. 첫 응모 및 당일 응모 미션은 이미 보상을 받은 상태로 구성해 응모 비용 검증에 보상이 섞이지 않도록 했습니다. 사전 데이터 구성은 회원가입이나 보상 지급 기능 자체의 검증을 의미하지 않습니다.
+
+중복 요청 테스트에서는 상태 코드와 오류 메시지를 함께 확인합니다. 첫 응모 후 잔액도 부족해지므로, HTTP 400만 확인하면 티켓 부족 오류를 중복 방지 성공으로 오인할 수 있기 때문입니다.
+
+### GitHub Actions CI
+
+워크플로우가 포함된 브랜치의 push와 PR 생성·업데이트를 계기로 GitHub의 임시 실행 환경에서 테스트합니다. 로컬 백엔드 실행 여부와 무관하게 CI가 자체 서버와 DB를 준비합니다.
+
+```text
+push / pull request
+  → Java 21·Node.js 24 및 테스트 의존성 준비
+  → Docker Compose로 전용 MySQL·Redis 실행 및 상태 확인
+  → Spring Boot 실행 JAR 빌드
+  → api-test 프로필로 서버 실행 및 HTTP 응답 대기
+  → Playwright API 테스트 3개 실행
+  → 성공·실패 리포트와 서버·컨테이너 로그 저장
+  → 테스트 환경 정리
+```
+
+- 서버와 DB 시간대를 `Asia/Seoul`로 맞춰 일일 미션의 날짜 기준을 통일합니다.
+- CI 실행마다 새 DB를 준비하고, 테스트마다 새 데이터를 생성해 이전 실행 결과에 의존하지 않습니다.
+- 테스트 실패는 CI 실패로 반영되며, HTML 리포트와 로그는 실패 시에도 Artifacts에 7일간 보관합니다.
+- 테스트 전용 설정을 사용하므로 실제 서비스의 DB·메일·OAuth 비밀값은 필요하지 않습니다.
+- 현재 CI는 API 테스트를 실행합니다. UI, 동시 요청 경쟁 조건, 외부 인증·메일 연동 및 별도 Gradle JUnit 테스트 실행은 포함하지 않습니다.
+
+설정 및 코드: [워크플로우](.github/workflows/api-tests.yml) · [API 테스트](api-tests/tests/entry.spec.js) · [테스트 데이터 준비](api-tests/helpers/seed.js) · [실행·학습 안내](api-tests/README.md)
+
+### CI 실패 감지 실습
+
+정상 응모의 예상 잔액을 의도적으로 `4`에서 `5`로 변경해 push하고, GitHub Actions에서 `Expected: 5 / Received: 4`, `1 failed / 2 passed`와 종료 코드 1을 확인했습니다. 이는 서비스 결함 발견 사례가 아니라, 잘못된 예상값을 테스트가 감지하고 CI 실패로 전달하는지 검증한 실습입니다.
+
+| 단계 | 실행 기록 |
+| --- | --- |
+| 최초 자동 실행 성공 | [테스트 3개 통과](https://github.com/sohyeoklim/LuckyDrop_BE_up/actions/runs/40472120724) |
+| 의도적인 예상값 변경 | [잔액 불일치 감지 및 CI 실패](https://github.com/sohyeoklim/LuckyDrop_BE_up/actions/runs/40473462051) |
+| 예상값 4로 복구 | [테스트 3개 재통과 및 CI 정상 복구](https://github.com/sohyeoklim/LuckyDrop_BE_up/actions/runs/40473903386) |
+
+### 로컬 API 테스트 실행
+
+JDK 21, Node.js 24, 실행 중인 Docker Desktop이 필요합니다. 저장소 루트에서 다음 명령으로 테스트 환경을 시작합니다.
+
+```powershell
+docker compose -f compose.api-test.yml up -d --wait
+.\gradlew.bat bootRun --args="--spring.profiles.active=api-test"
+```
+
+서버가 준비되면 새 터미널에서 실행합니다.
+
+```powershell
+cd api-tests
+npm.cmd ci
+npm.cmd test
+npm.cmd run report
+```
+
+테스트 서버는 `18080`, MySQL은 `13306`, Redis는 `16379` 포트를 사용합니다. API 테스트이므로 브라우저 바이너리 설치는 필요하지 않습니다. 로컬에서는 조사할 수 있도록 테스트 데이터를 남기며, 재실행 시 새로운 데이터를 생성합니다. 일일 미션 조건 때문에 서버 시간대를 `Asia/Seoul`로 맞춰야 하며, 자정을 가로지르는 실행에는 날짜 경계 처리가 추가로 필요합니다.
+
+### Gradle 테스트
+
 ```powershell
 .\gradlew.bat test
 ```
 
 현재 테스트에는 Spring 애플리케이션 컨텍스트 로딩 검사가 포함되어 있으므로 실행 환경의 데이터베이스, Redis와 애플리케이션 설정이 필요할 수 있습니다.
+
+### k6 부하 측정
 
 목록 조회의 북마크 정렬 경로는 k6 설치 후 다음처럼 측정할 수 있습니다. 비교할 때는 같은 데이터와 부하 조건을 사용합니다.
 
